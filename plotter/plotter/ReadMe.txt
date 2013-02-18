@@ -22,4 +22,9 @@ plotter.f90
 /////////////////////////////////////////////////////////////////////////////
 Other notes:
 
+This plotter routine can be used from console application. 
+READ/WRITE can be done from console window in an interactive way. 
+Multiple plot-windows can be opened simultaneously. 
+
+
 /////////////////////////////////////////////////////////////////////////////
