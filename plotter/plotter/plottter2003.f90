@@ -11,14 +11,14 @@ module m_oop
     integer :: line_width = 1
     type (t_rgb) :: rgb = t_rgb(0, 0, 0)
   contains
-    procedure (device_on    ), deferred, pass :: on
-    procedure (device_off   ), deferred, pass :: off
-    procedure (device_show  ), deferred, pass :: show
-    procedure (device_pen   ), deferred, pass :: pen
+    procedure (device_on), deferred, pass :: on
+    procedure (device_off), deferred, pass :: off
+    procedure (device_show), deferred, pass :: show
+    procedure (device_pen), deferred, pass :: pen
     procedure (device_lineTo), deferred, pass :: lineTo
     procedure (device_moveTo), deferred, pass :: moveTo
-    procedure (device_dot   ), deferred, pass :: dot
-    procedure (device_text  ), deferred, pass :: text
+    procedure (device_dot), deferred, pass :: dot
+    procedure (device_text), deferred, pass :: text
   end type t_device 
 
   abstract interface 
@@ -91,11 +91,11 @@ module m_win32
     integer (LPINT)  :: hThread   = 0
     integer (LPDWORD):: id        = 0
     integer (HANDLE) :: hPen      = 0
+    type (RTL_CRITICAL_SECTION) :: CriticalSection = RTL_CRITICAL_SECTION(0,0,0,0,0,0)
   end type t_wnd      
 
   type, extends(t_device) :: t_win32
-    type (t_wnd), private :: wnd = t_wnd(0, 0, 0, 0, 0)
-    type (RTL_CRITICAL_SECTION), private :: CriticalSection = RTL_CRITICAL_SECTION(0,0,0,0,0,0)
+    type (t_wnd) :: wnd 
   contains 
     procedure, pass :: on => gr_on
     procedure, pass :: off => gr_off
@@ -153,7 +153,7 @@ contains
                                 win32%nsize_y + iwindow_frame_y,     &
                                 0, 0,                                &
                                 hInstance,                           &
-                                transfer(c_loc(win32), int(0))    )  
+                                transfer(c_loc(win32%wnd), int(0))    )  
     if (hWndMain == 0) return
     iretb = ShowWindow( hWndMain, nCmdShow )
     iretb = UpdateWindow( hWndMain )
@@ -180,7 +180,6 @@ contains
     type (T_RECT)        :: rc
     !
     type (T_CREATESTRUCT), pointer :: cs
-    type (t_win32)       , pointer :: win32
     type (t_wnd)         , pointer :: wnd
     type (c_ptr) :: c_p ! mold for transfer function
     !
@@ -191,39 +190,39 @@ contains
     MainWndProc = 0
     select case ( mesg )
       case (WM_CREATE)
-        call c_f_pointer(transfer(lParam           , c_p), cs   ) ! LOC(cs ) = lParam
-        call c_f_pointer(transfer(cs%lpCreateParams, c_p), win32) ! LOC(win32) = cs%lpCreateParams 
+        call c_f_pointer(transfer(lParam           , c_p), cs ) ! LOC(cs ) = lParam
+        call c_f_pointer(transfer(cs%lpCreateParams, c_p), wnd) ! LOC(wnd) = cs%lpCreateParams 
         iretb    = TlsSetValue(iTls, cs%lpCreateParams)
-        win32%wnd%hWnd = hWnd
+        wnd%hWnd = hWnd
         hDC      = GetDC(hWnd)
-        win32%wnd%hDC  = CreateCompatibleDC(hDC)
+        wnd%hDC  = CreateCompatibleDC(hDC)
         iretb    = GetClientRect(hWnd, rc)
         hBmp     = CreateCompatibleBitmap(hDC, rc%right - rc%left, rc%bottom - rc%top)
-        iretb    = SelectObject(win32%wnd%hDC, hBmp)
-        iretb    = PatBlt(win32%wnd%hDC, 0, 0, rc%right - rc%left, rc%bottom - rc%top, WHITENESS)
+        iretb    = SelectObject(wnd%hDC, hBmp)
+        iretb    = PatBlt(wnd%hDC, 0, 0, rc%right - rc%left, rc%bottom - rc%top, WHITENESS)
         iretb    = ReleaseDC(hWnd, hDC)
         iretb    = DeleteObject(hBmp)
       case (WM_DESTROY)
-        call c_f_pointer(transfer(TlsGetValue(iTls), c_p), win32) ! LOC(win32) = TlsGetValue(iTls)
-        call c_f_pointer(c_loc(win32%CriticalSection), lpCriticalSection)
-        call EnterCriticalSection( lpCriticalSection )          ! EnterCriticalSection( LOC(win32%CriticalSection) )
-        iretb = DeleteObject( win32%wnd%hDC )
+        call c_f_pointer(transfer(TlsGetValue(iTls), c_p), wnd) ! LOC(wnd) = TlsGetValue(iTls)
+        call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
+        call EnterCriticalSection( lpCriticalSection )          ! EnterCriticalSection( LOC(wnd%CriticalSection) )
+        iretb = DeleteObject( wnd%hDC )
         call PostQuitMessage( 0 )
         call LeaveCriticalSection( lpCriticalSection )
       case (WM_PAINT)
-        call c_f_pointer(transfer(TlsGetValue(iTls), c_p), win32)  
-        call c_f_pointer(c_loc(win32%CriticalSection), lpCriticalSection)
+        call c_f_pointer(transfer(TlsGetValue(iTls), c_p), wnd)  
+        call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
         call EnterCriticalSection( lpCriticalSection )
-        hDC    = BeginPaint(    win32%wnd%hWnd, ps )
-        iretb  = GetClientRect( win32%wnd%hWnd, rc )
-        iretb  = BitBlt(hDC, 0, 0, rc%right - rc%left, rc%bottom - rc%top, win32%wnd%hDC, 0, 0, SRCCOPY)
-        iretb  = endPaint( win32%wnd%hWnd, ps )
+        hDC    = BeginPaint(    wnd%hWnd, ps )
+        iretb  = GetClientRect( wnd%hWnd, rc )
+        iretb  = BitBlt(hDC, 0, 0, rc%right - rc%left, rc%bottom - rc%top, wnd%hDC, 0, 0, SRCCOPY)
+        iretb  = endPaint( wnd%hWnd, ps )
         call LeaveCriticalSection( lpCriticalSection )
       case (WM_RBUTTONUP)
-        call c_f_pointer(transfer(TlsGetValue(iTls), c_p), win32)  
-        call c_f_pointer(c_loc(win32%CriticalSection), lpCriticalSection)
+        call c_f_pointer(transfer(TlsGetValue(iTls), c_p), wnd)  
+        call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
         call EnterCriticalSection( lpCriticalSection )
-        iretb = DeleteObject( win32%wnd%hDC )
+        iretb = DeleteObject( wnd%hDC )
         call PostQuitMessage( 0 )
         call LeaveCriticalSection( lpCriticalSection )
       case default
@@ -242,7 +241,7 @@ contains
     type (T_RTL_CRITICAL_SECTION), pointer :: lpCriticalSection
 
     associate(wnd => self%wnd)
-      call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
+      call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
       call InitializeCriticalSection( lpCriticalSection ) 
       if (nwin == 0) iTls  = TlsAlloc()
       nwin = nwin + 1
@@ -284,7 +283,7 @@ contains
       iretb = WaitForSingleObject(wnd%hThread, iwait)
       iretb = CloseHandle(wnd%hThread)
       iretb = PostMessage(wnd%hWnd, WM_DESTROY, NULL, NULL)
-      call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
+      call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
       call DeleteCriticalSection( lpCriticalSection ) 
     end associate
     nwin = nwin - 1
@@ -297,7 +296,7 @@ contains
     type (T_RTL_CRITICAL_SECTION), pointer :: lpCriticalSection
     integer (BOOL):: iretb
     associate(wnd => self%wnd)
-      call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
+      call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
       call EnterCriticalSection( lpCriticalSection ) 
       iretb = InvalidateRect(wnd%hWnd, NULL, FALSE)
       call LeaveCriticalSection( lpCriticalSection )  
@@ -314,7 +313,7 @@ contains
     associate( rgb_ => self%rgb, line_width_ => self%line_width, wnd => self%wnd )
       if ( present(rgb) ) rgb_ = rgb
       if ( present(line_width) ) line_width_ = line_width
-      call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
+      call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
       call EnterCriticalSection( lpCriticalSection ) 
       iretb    = DeleteObject(wnd%hPen) 
       wnd%hPen = CreatePen(PS_SOLID, line_width_, irgb(rgb_))
@@ -337,7 +336,7 @@ contains
     type (T_RTL_CRITICAL_SECTION), pointer :: lpCriticalSection
     integer (BOOL):: iretb
     associate(wnd => self%wnd)
-      call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
+      call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
       call EnterCriticalSection( lpCriticalSection )  
       iretb = MoveToEx(wnd%hDC, ix, iy, NULL)
       call LeaveCriticalSection( lpCriticalSection )  
@@ -351,7 +350,7 @@ contains
     type (T_RTL_CRITICAL_SECTION), pointer :: lpCriticalSection
     integer (BOOL):: iretb
     associate(wnd => self%wnd)
-      call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
+      call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
       call EnterCriticalSection( lpCriticalSection ) 
       iretb = LineTo(wnd%hDC, ix, iy)
       call LeaveCriticalSection( lpCriticalSection ) 
@@ -365,7 +364,7 @@ contains
     type (T_RTL_CRITICAL_SECTION), pointer :: lpCriticalSection
     integer (BOOL):: iretb
     associate(wnd => self%wnd)
-      call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
+      call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
       call EnterCriticalSection( lpCriticalSection ) 
       iretb = SetPixel(wnd%hDC, ix, iy, icol)
       call LeaveCriticalSection( lpCriticalSection ) 
@@ -396,13 +395,13 @@ contains
       else  
         kfontdirection = 0
       end if
-      call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
+      call c_f_pointer(c_loc(wnd%CriticalSection), lpCriticalSection)
       call EnterCriticalSection( lpCriticalSection ) 
       iretb = SetBkMode(wnd%hDC, TRANSPARENT)
       hFont = CreateFont( kfontsize , 10 , kfontdirection , 0 ,FW_DONTCARE , FALSE , FALSE , FALSE ,  &
-                     ANSI_CHARSET , OUT_DEFAULT_PRECIS ,                   &
-                         CLIP_DEFAULT_PRECIS , PROOF_QUALITY ,                 &
-                       ior(FIXED_PITCH,  FF_ROMAN) , NULL            )
+		        	      ANSI_CHARSET , OUT_DEFAULT_PRECIS ,                   &
+	  		              CLIP_DEFAULT_PRECIS , PROOF_QUALITY ,                 &
+			              ior(FIXED_PITCH,  FF_ROMAN) , NULL       		)
       iretb = SelectObject(wnd%hdc , hFont)
       iretb = TextOut(wnd%hDC, ix, iy, txt, len_trim(txt))
       iretb = SelectObject(wnd%hdc , GetStockObject(SYSTEM_FONT))
