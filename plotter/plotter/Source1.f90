@@ -43,7 +43,6 @@ program Mandel
   use m_plot
   use m_mandel
   use m_jacobi
-  use ifmt, only : RTL_CRITICAL_SECTION
   implicit none
   !integer, parameter :: kd = SELECTED_REAL_KIND(15)
   integer, parameter :: m = 1000
@@ -59,7 +58,6 @@ program Mandel
 
   class(t_device), allocatable :: fig1, fig2, fig3, fig4, fig5 
   type(t_rgb), parameter :: rgb_black = t_rgb(0, 0, 0)
-  type(t_wnd), parameter :: wnd_init = t_wnd(0, 0, 0, 0, 0)
 !  
   xmin = -2.0d0 
   xmax =  2.0d0 
