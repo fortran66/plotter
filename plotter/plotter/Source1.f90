@@ -57,10 +57,9 @@ program Mandel
   integer, allocatable :: ic(:, :)
   integer :: icol(0:m), it0, it1
 
-  class(t_device), allocatable :: fig1, fig2, fig3, fig4, fig5
+  class(t_device), allocatable :: fig1, fig2, fig3, fig4, fig5 
   type(t_rgb), parameter :: rgb_black = t_rgb(0, 0, 0)
-  type(RTL_CRITICAL_SECTION), parameter :: rtl_init = RTL_CRITICAL_SECTION(0,0,0,0,0,0)
-  type(t_wnd), parameter :: wnd_init = t_wnd(0, 0, 0, 0, 0,  rtl_init)
+  type(t_wnd), parameter :: wnd_init = t_wnd(0, 0, 0, 0, 0)
 !  
   xmin = -2.0d0 
   xmax =  2.0d0 
@@ -100,7 +99,7 @@ program Mandel
   call system_clock(it1)
   print *, ' do concurrent time =', t1 - t0, it1 - it0
 !
-  allocate(fig1, source = t_win32('Mandelbrot 1', imax, jmax, 1, rgb_black, wnd_init))
+  allocate(fig1, source = t_win32('Mandelbrot 1', imax, jmax, 1, rgb_black))
   call fig1%on()
   do i = 0, imax
     do j = 0, jmax
@@ -140,7 +139,7 @@ program Mandel
   call system_clock(it1)
   print *, ' do concurrent time =', t1 - t0, it1 - it0
 !
-  allocate(fig2, source = t_win32('Mandelbrot 2', imax, jmax, 1, rgb_black, wnd_init))
+  allocate(fig2, source = t_win32('Mandelbrot 2', imax, jmax, 1, rgb_black))
   call fig2%on()
   do i = 0, imax
     do j = 0, jmax
@@ -149,7 +148,7 @@ program Mandel
     call fig2%show()
   end do
 !
-  allocate(fig3, source = t_win32('Lorentz attractor', 800, 600, 1, rgb_black, wnd_init))
+  allocate(fig3, source = t_win32('Lorentz attractor', 800, 600, 1, rgb_black))
   call fig3%on()
   call fig3%pen(2, t_rgb(255, 125, 0))
   a = 10.0d0
@@ -171,7 +170,7 @@ program Mandel
     call fig3%show()
   end do
  ! 
-  allocate(fig4, source = t_win32('Chaos', 640, 480, 1, rgb_black, wnd_init))
+  allocate(fig4, source = t_win32('Chaos', 640, 480, 1, rgb_black))
   call fig4%on()
   do ix = 1, 640
     p = 0.3
@@ -186,10 +185,8 @@ program Mandel
     end do
     call fig4%show()
   end do
-  
   !
-  
-  allocate(fig5, source = t_win32('Laplace', 1200, 600, 1, rgb_black, wnd_init))
+  allocate(fig5, source = t_win32('Laplace', 1200, 600, 1, rgb_black))
   call fig5%on()
   call laplace(v)
 ! x-direction  
@@ -231,7 +228,7 @@ program Mandel
   
   call fig5%off()
   deallocate(fig5)
-  
+
   stop
 contains 
   integer function irgb(ir, ig, ib)
