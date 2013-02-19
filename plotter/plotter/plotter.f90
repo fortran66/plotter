@@ -76,7 +76,6 @@ module m_oop
   
 end module m_oop
 
-
 module m_win32
   use, intrinsic :: iso_c_binding
   use ifwina
@@ -86,10 +85,10 @@ module m_win32
   implicit none
 
   type :: t_wnd
-    integer (HANDLE) :: hWnd      = 0
-    integer (HANDLE) :: hDC       = 0
     integer (LPINT)  :: hThread   = 0
     integer (LPDWORD):: id        = 0
+    integer (HANDLE) :: hWnd      = 0
+    integer (HANDLE) :: hDC       = 0
     integer (HANDLE) :: hPen      = 0
   end type t_wnd      
 
@@ -97,20 +96,21 @@ module m_win32
     type (t_wnd), private :: wnd = t_wnd(0, 0, 0, 0, 0)
     type (RTL_CRITICAL_SECTION), private :: CriticalSection = RTL_CRITICAL_SECTION(0,0,0,0,0,0)
   contains 
-    procedure, pass :: on => gr_on
-    procedure, pass :: off => gr_off
-    procedure, pass :: show => gr_show
-    procedure, pass :: pen => gr_pen
+    procedure, pass :: on     => gr_on
+    procedure, pass :: off    => gr_off
+    procedure, pass :: show   => gr_show
+    procedure, pass :: pen    => gr_pen
     procedure, pass :: lineTo => gr_lineTo
     procedure, pass :: moveTo => gr_moveTo
-    procedure, pass :: dot => gr_dot
-    procedure, pass :: text => gr_text
+    procedure, pass :: dot    => gr_dot
+    procedure, pass :: text   => gr_text
   end type t_win32
 
-  integer (DWORD), save :: iTls = 0
   integer, save :: nwin = 0 
-  type (  RTL_CRITICAL_SECTION), save    ::   gCriticalSection = RTL_CRITICAL_SECTION(0,0,0,0,0,0)
-  type (T_RTL_CRITICAL_SECTION), pointer :: lpgCriticalSection
+  integer (DWORD), save :: iThreadPrivate_Win32 = 0
+  type (  RTL_CRITICAL_SECTION), save    ::   gCriticalSection 
+  type (T_RTL_CRITICAL_SECTION), pointer :: lpgCriticalSection  
+
 contains
   !--------------------------------------------------------------------------------
   integer(4) function WinMain( hInstance, nCmdShow, win32 )
@@ -133,15 +133,13 @@ contains
       WinMain = -1 ! Error code 
       wc%lpszClassName = transfer(c_loc(ClassName)     , int(0)) 
       wc%lpfnWndProc   = transfer(c_funloc(MainWndProc), int(0)) ! CALLBACK procedure name
-      wc%style        = ior(CS_VREDRAW , CS_HREDRAW)
+      wc%style         = ior(CS_VREDRAW , CS_HREDRAW)
       wc%hInstance     = hInstance
-      wc%hIcon        = NULL   
-      wc%hCursor      = LoadCursor( NULL, IDC_ARROW )
+      wc%hIcon         = NULL   
+      wc%hCursor       = LoadCursor( NULL, IDC_ARROW )
       wc%hbrBackground = ( COLOR_WINDOW + 1 )
       if ( RegisterClass(wc) == 0 ) return    ! initialize window
       first = .false.
-      call c_f_pointer(c_loc(gCriticalSection), lpgCriticalSection)
-      call InitializeCriticalSection( lpgCriticalSection ) 
     end if
     ! Init instance
     WinMain = -2 ! Error code 
@@ -163,7 +161,6 @@ contains
       iretb = DispatchMessage(  mesg )
     end do
     WinMain = mesg%wParam
-    call InitializeCriticalSection( lpgCriticalSection ) 
     return
   end function WinMain
   !-------------------------------------------------------------------------------------
@@ -181,7 +178,6 @@ contains
     !
     type (T_CREATESTRUCT), pointer :: cs
     type (t_win32)       , pointer :: win32
-    type (t_wnd)         , pointer :: wnd
     type (c_ptr) :: c_p ! mold for transfer function
     !
     type (T_RTL_CRITICAL_SECTION), pointer :: lpCriticalSection
@@ -193,39 +189,47 @@ contains
       case (WM_CREATE)
         call c_f_pointer(transfer(lParam           , c_p), cs   ) ! LOC(cs ) = lParam
         call c_f_pointer(transfer(cs%lpCreateParams, c_p), win32) ! LOC(win32) = cs%lpCreateParams 
-        iretb    = TlsSetValue(iTls, cs%lpCreateParams)
-        win32%wnd%hWnd = hWnd
-        hDC      = GetDC(hWnd)
-        win32%wnd%hDC  = CreateCompatibleDC(hDC)
-        iretb    = GetClientRect(hWnd, rc)
-        hBmp     = CreateCompatibleBitmap(hDC, rc%right - rc%left, rc%bottom - rc%top)
-        iretb    = SelectObject(win32%wnd%hDC, hBmp)
-        iretb    = PatBlt(win32%wnd%hDC, 0, 0, rc%right - rc%left, rc%bottom - rc%top, WHITENESS)
-        iretb    = ReleaseDC(hWnd, hDC)
-        iretb    = DeleteObject(hBmp)
+        iretb = TlsSetValue(iThreadPrivate_Win32, cs%lpCreateParams)
+        associate (wnd => win32%wnd)
+          wnd%hWnd = hWnd
+          hDC      = GetDC(hWnd)
+          wnd%hDC  = CreateCompatibleDC(hDC)
+          iretb    = GetClientRect(hWnd, rc)
+          hBmp     = CreateCompatibleBitmap(hDC, rc%right - rc%left, rc%bottom - rc%top)
+          iretb    = SelectObject(wnd%hDC, hBmp)
+          iretb    = PatBlt(wnd%hDC, 0, 0, rc%right - rc%left, rc%bottom - rc%top, WHITENESS)
+          iretb    = ReleaseDC(hWnd, hDC)
+          iretb    = DeleteObject(hBmp)
+        end associate
       case (WM_DESTROY)
-        call c_f_pointer(transfer(TlsGetValue(iTls), c_p), win32) ! LOC(win32) = TlsGetValue(iTls)
+        call c_f_pointer(transfer(TlsGetValue(iThreadPrivate_Win32), c_p), win32) ! LOC(win32) = TlsGetValue(iThreadPrivate_Win32)
         call c_f_pointer(c_loc(win32%CriticalSection), lpCriticalSection)
-        call EnterCriticalSection( lpCriticalSection )          ! EnterCriticalSection( LOC(win32%CriticalSection) )
-        iretb = DeleteObject( win32%wnd%hDC )
-        call PostQuitMessage( 0 )
-        call LeaveCriticalSection( lpCriticalSection )
+        associate (wnd => win32%wnd)
+          call EnterCriticalSection( lpCriticalSection )          ! EnterCriticalSection( LOC(win32%CriticalSection) )
+          iretb = DeleteObject( wnd%hDC )
+          call PostQuitMessage( 0 )
+          call LeaveCriticalSection( lpCriticalSection )
+        end associate  
       case (WM_PAINT)
-        call c_f_pointer(transfer(TlsGetValue(iTls), c_p), win32)  
+        call c_f_pointer(transfer(TlsGetValue(iThreadPrivate_Win32), c_p), win32)  
         call c_f_pointer(c_loc(win32%CriticalSection), lpCriticalSection)
+        associate (wnd => win32%wnd)
         call EnterCriticalSection( lpCriticalSection )
-        hDC    = BeginPaint(    win32%wnd%hWnd, ps )
-        iretb  = GetClientRect( win32%wnd%hWnd, rc )
-        iretb  = BitBlt(hDC, 0, 0, rc%right - rc%left, rc%bottom - rc%top, win32%wnd%hDC, 0, 0, SRCCOPY)
-        iretb  = endPaint( win32%wnd%hWnd, ps )
-        call LeaveCriticalSection( lpCriticalSection )
+          hDC    = BeginPaint(    wnd%hWnd, ps )
+          iretb  = GetClientRect( wnd%hWnd, rc )
+          iretb  = BitBlt(hDC, 0, 0, rc%right - rc%left, rc%bottom - rc%top, wnd%hDC, 0, 0, SRCCOPY)
+          iretb  = endPaint( wnd%hWnd, ps )
+          call LeaveCriticalSection( lpCriticalSection )
+        end associate
       case (WM_RBUTTONUP)
-        call c_f_pointer(transfer(TlsGetValue(iTls), c_p), win32)  
+        call c_f_pointer(transfer(TlsGetValue(iThreadPrivate_Win32), c_p), win32)  
         call c_f_pointer(c_loc(win32%CriticalSection), lpCriticalSection)
-        call EnterCriticalSection( lpCriticalSection )
-        iretb = DeleteObject( win32%wnd%hDC )
-        call PostQuitMessage( 0 )
-        call LeaveCriticalSection( lpCriticalSection )
+        associate (wnd => win32%wnd)
+          call EnterCriticalSection( lpCriticalSection )
+          iretb = DeleteObject( wnd%hDC )
+          call PostQuitMessage( 0 )
+          call LeaveCriticalSection( lpCriticalSection )
+        end associate  
       case default
         MainWndProc = DefWindowProc( hWnd, mesg, wParam, lParam )
     end select 
@@ -240,15 +244,19 @@ contains
     integer (HANDLE)  :: hBmp
     type (T_RECT)    :: rc
     type (T_RTL_CRITICAL_SECTION), pointer :: lpCriticalSection
-
     associate(wnd => self%wnd)
+      if (nwin == 0) then
+        iThreadPrivate_Win32 = TlsAlloc()
+        call c_f_pointer(c_loc(gCriticalSection), lpgCriticalSection)
+        call InitializeCriticalSection( lpgCriticalSection ) 
+      end if
       call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
       call InitializeCriticalSection( lpCriticalSection ) 
-      if (nwin == 0) iTls  = TlsAlloc()
       nwin = nwin + 1
       wnd%hThread = CreateThread(NULL, 0, Thread_Proc, NULL, CREATE_SUSPENDED, wnd%id) 
       iretb       = SetThreadPriority(wnd%hThread, THREAD_PRIORITY_BELOW_NORMAL)
       iretb       = ResumeThread(wnd%hThread)
+
       call sleep(100) ! wait for Window initialization 
       iretb = GetClientRect(wnd%hWnd, rc)
       hBmp  = CreateCompatibleBitmap(wnd%hDC, rc%right - rc%left, rc%bottom - rc%top)
@@ -286,9 +294,12 @@ contains
       iretb = PostMessage(wnd%hWnd, WM_DESTROY, NULL, NULL)
       call c_f_pointer(c_loc(self%CriticalSection), lpCriticalSection)
       call DeleteCriticalSection( lpCriticalSection ) 
+      nwin = nwin - 1
+      if (nwin == 0) then 
+        iretb = TlsFree(iThreadPrivate_Win32)
+        call DeleteCriticalSection( lpgCriticalSection ) 
+      end if
     end associate
-    nwin = nwin - 1
-    if (nwin == 0) iretb = TlsFree(iTls)
     return
   end subroutine gr_off
   !-------------------------------------------------------------------------------------

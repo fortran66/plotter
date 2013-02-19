@@ -1,6 +1,6 @@
 module m_mandel
-  implicit none 
-  integer, parameter :: kd = kind(0.0d0)
+  implicit none  
+  integer, private, parameter :: kd = SELECTED_REAL_KIND(15)
 contains
   pure elemental integer function imandel(z)
     complex(kd), intent(in) :: z
@@ -44,7 +44,7 @@ program Mandel
   use m_mandel
   use m_jacobi
   implicit none
-  !integer, parameter :: kd = SELECTED_REAL_KIND(15)
+  integer, parameter :: kd = SELECTED_REAL_KIND(15)
   integer, parameter :: m = 1000
   integer :: nwinx = 800, nwiny = 600
   integer :: i, j, k, imax, jmax, maxiter, icount, ix, iy
@@ -58,7 +58,7 @@ program Mandel
 
   class(t_device), allocatable :: fig1, fig2, fig3, fig4, fig5 
   type(t_rgb), parameter :: rgb_black = t_rgb(0, 0, 0)
-!  
+!
   xmin = -2.0d0 
   xmax =  2.0d0 
   ymin = -2.0d0 
