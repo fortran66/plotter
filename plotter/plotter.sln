@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "plotter", "plotter\plotter.vfproj", "{8EA4FDB6-DB2C-4E33-BB4D-61FD45295F8E}"
 EndProject
-Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "plotter2", "plotter2\plotter2.vfproj", "{33E3D353-F726-4813-94E1-1F02D27BD141}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -15,10 +13,6 @@ Global
 		{8EA4FDB6-DB2C-4E33-BB4D-61FD45295F8E}.Debug|Win32.Build.0 = Debug|Win32
 		{8EA4FDB6-DB2C-4E33-BB4D-61FD45295F8E}.Release|Win32.ActiveCfg = Release|Win32
 		{8EA4FDB6-DB2C-4E33-BB4D-61FD45295F8E}.Release|Win32.Build.0 = Release|Win32
-		{33E3D353-F726-4813-94E1-1F02D27BD141}.Debug|Win32.ActiveCfg = Debug|Win32
-		{33E3D353-F726-4813-94E1-1F02D27BD141}.Debug|Win32.Build.0 = Debug|Win32
-		{33E3D353-F726-4813-94E1-1F02D27BD141}.Release|Win32.ActiveCfg = Release|Win32
-		{33E3D353-F726-4813-94E1-1F02D27BD141}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
