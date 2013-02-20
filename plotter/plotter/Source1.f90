@@ -226,7 +226,7 @@ program Mandel
   
   call fig5%off()
   deallocate(fig5)
-
+ 
   stop
 contains 
   integer function irgb(ir, ig, ib)

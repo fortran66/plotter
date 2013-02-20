@@ -105,7 +105,7 @@ module m_win32
     procedure, pass :: dot    => gr_dot
     procedure, pass :: text   => gr_text
   end type t_win32
-
+  
   integer, save :: nwin = 0 
   integer (DWORD), save :: iThreadPrivate_Win32 = 0
   type (  RTL_CRITICAL_SECTION), save    ::   gCriticalSection 
